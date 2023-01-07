@@ -23,5 +23,6 @@ module.exports = {
         '@typescript-eslint/no-confusing-void-expression': 'off',
         '@typescript-eslint/prefer-ts-expect-error': 'warn',
         '@typescript-eslint/no-invalid-void-type': 'off',
+        '@typescript-eslint/no-floating-promises': 'off',
     },
 };

@@ -50,7 +50,7 @@ export function Img({
     onMouseMove,
     ...rest
 }: DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>) {
-    const { overlay, onImageDrag, onImageDragStart, onImageDragEnd } = useContext(Context);
+    const { overlay, onImageDrag, onImageDragStart, onImageDragEnd, zoom } = useContext(Context);
     const [isDragging, setIsDragging] = useState(false);
     const [startDraggingPosition, setStartDraggingPosition] = useState<Position>({
         x: null,
@@ -64,6 +64,8 @@ export function Img({
         x: null,
         y: null,
     });
+
+    const [originalImage, setOriginalImage] = useState<Dimensions>({ width: null, height: null });
 
     /**
      * One of the rendered dimensions will be invalid because the image has
@@ -98,6 +100,16 @@ export function Img({
         [onImageDragEnd]
     );
 
+    const getOriginalImageDimensions = useCallback(async () => {
+        if (!src) return { width: null, height: null };
+
+        const image = new Image();
+        image.onload = () => {
+            setOriginalImage({ width: image.width, height: image.height });
+        };
+        image.src = src;
+    }, [src]);
+
     const handleMouseMove = useCallback(
         (event: globalThis.MouseEvent) => {
             if (
@@ -106,66 +118,63 @@ export function Img({
                 startDraggingPosition.y === null ||
                 !src ||
                 renderedWidth === null ||
-                renderedHeight === null
+                renderedHeight === null ||
+                originalImage.width === null ||
+                originalImage.height === null
             )
                 return;
 
-            const image = new Image();
-            image.onload = () => {
-                /**
-                 * The dimensions of the original image saved remotely (pc, server, etc.)
-                 */
-                const { width, height } = image;
+            let actualWidth = renderedWidth;
+            let actualHeight = renderedHeight;
 
-                let actualWidth = renderedWidth;
-                let actualHeight = renderedHeight;
+            const isHeightTouchingOverlayEdges =
+                originalImage.height - renderedHeight > originalImage.width - renderedWidth;
 
-                if (height - renderedHeight > width - renderedWidth) {
-                    const scale = renderedHeight / height;
-                    actualWidth = width * scale;
-                } else {
-                    const scale = renderedWidth / width;
-                    actualHeight = height * scale;
-                }
+            if (isHeightTouchingOverlayEdges) {
+                const scale = renderedHeight / originalImage.height;
+                actualWidth = originalImage.width * scale;
+            } else {
+                const scale = renderedWidth / originalImage.width;
+                actualHeight = originalImage.height * scale;
+            }
 
-                if (overlay.width === null || overlay.height === null) return;
+            if (overlay.width === null || overlay.height === null) return;
 
-                // @ts-ignore
-                const nextX = -startDraggingPosition.x + event.clientX;
-                // @ts-ignore
-                const nextY = -startDraggingPosition.y + event.clientY;
+            // @ts-ignore
+            const nextX = -startDraggingPosition.x + event.clientX;
+            // @ts-ignore
+            const nextY = -startDraggingPosition.y + event.clientY;
 
-                const canMoveX = !(Math.abs(nextX) > (actualWidth - overlay.width) / 2);
-                const canMoveY = !(Math.abs(nextY) > (actualHeight - overlay.height) / 2);
+            // Prevent the image from being dragged past the overlay's edges
+            const canMoveX = !(Math.abs(nextX) > (actualWidth - overlay.width) / 2);
+            const canMoveY = !(Math.abs(nextY) > (actualHeight - overlay.height) / 2);
 
-                setPosition(previousPosition => {
-                    const position = {
-                        // @ts-ignore
-                        x: canMoveX ? -startDraggingPosition.x + event.clientX : previousPosition.x,
-                        // @ts-ignore
-                        y: canMoveY ? startDraggingPosition.y - event.clientY : previousPosition.y,
-                    };
+            setPosition(previousPosition => {
+                const position = {
+                    // @ts-ignore
+                    x: canMoveX ? -startDraggingPosition.x + event.clientX : previousPosition.x,
+                    // @ts-ignore
+                    y: canMoveY ? startDraggingPosition.y - event.clientY : previousPosition.y,
+                };
 
-                    onImageDrag?.(
-                        {
-                            position,
-                            startDraggingPosition,
-                            previousPosition,
-                            image: {
-                                width: actualWidth,
-                                height: actualHeight,
-                                originalWidth: width,
-                                originalHeight: height,
-                            },
-                            overlay,
+                onImageDrag?.(
+                    {
+                        position,
+                        startDraggingPosition,
+                        previousPosition,
+                        image: {
+                            width: actualWidth,
+                            height: actualHeight,
+                            originalWidth: originalImage.width,
+                            originalHeight: originalImage.height,
                         },
-                        event
-                    );
+                        overlay,
+                    },
+                    event
+                );
 
-                    return position;
-                });
-            };
-            image.src = src;
+                return position;
+            });
         },
         [
             isDragging,
@@ -173,12 +182,14 @@ export function Img({
             src,
             renderedWidth,
             renderedHeight,
+            originalImage.width,
+            originalImage.height,
             overlay,
             onImageDrag,
         ]
     );
 
-    // It's important that the user starts dragging inside the image
+    // It's important that the user starts dragging inside the image's bounds
     // Other than that, the user should be able to stop dragging anywhere on the
     // page
     // Listen to onMouseDown & onMouseMove on the document
@@ -195,7 +206,8 @@ export function Img({
     useEffect(() => {
         setStartDraggingPosition({ x: null, y: null });
         setPosition({ x: null, y: null });
-    }, [src]);
+        getOriginalImageDimensions();
+    }, [getOriginalImageDimensions, src]);
 
     return (
         <img
@@ -208,20 +220,20 @@ export function Img({
                 objectFit: 'contain',
                 maxWidth: '100%',
                 maxHeight: '100%',
-                minWidth: overlay.width || 0,
-                minHeight: overlay.height || 0,
+                minWidth: overlay.width ?? 0,
+                minHeight: overlay.height ?? 0,
                 transform: `translateX(${position.x ?? 0}px) translateY(${
                     position.y ? -position.y : 0
-                }px)`,
+                }px) scale(${zoom ?? 1})`,
             }}
             onMouseDown={startDragging}
         />
     );
 }
 
-interface EditorEvents {
+interface SharedProps {
     /**
-     * Fired when the user starts dragging the image
+     * Fires continuously while the image is being dragged.
      */
     onImageDrag?: (
         info: {
@@ -236,20 +248,39 @@ interface EditorEvents {
         },
         event: globalThis.MouseEvent
     ) => void;
+    /**
+     * Fires when the user starts dragging the image.
+     */
     onImageDragStart?: (event: MouseEvent<HTMLImageElement, globalThis.MouseEvent>) => void;
+    /**
+     * Fires when the user stops dragging the image.
+     */
     onImageDragEnd?: (event: globalThis.MouseEvent) => void;
+    /**
+     * Fires when the user scales the image.
+     */
+    onImageZoom?: (event: globalThis.MouseEvent) => void;
+    /**
+     * The zoom level of the image.
+     *
+     * @default 1
+     */
+    zoom?: number;
 }
 
 const Context = createContext<
-    { overlay: Dimensions; setOverlay: (value: Dimensions) => void } & EditorEvents
+    { overlay: Dimensions; setOverlay: (value: Dimensions) => void } & SharedProps
 >({
     overlay: { width: null, height: null },
     setOverlay: () => null,
     onImageDrag: () => null,
+    onImageDragStart: () => null,
+    onImageDragEnd: () => null,
+    onImageZoom: () => null,
 });
 
 export type EditorProps = DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement> &
-    EditorEvents;
+    SharedProps;
 
 export function Editor({
     children,
@@ -257,13 +288,23 @@ export function Editor({
     onImageDrag,
     onImageDragStart,
     onImageDragEnd,
+    onImageZoom,
+    zoom = 1,
     ...rest
 }: EditorProps) {
     const [overlay, setOverlay] = useState<Dimensions>({ width: null, height: null });
 
     const memoValue = useMemo(
-        () => ({ overlay, setOverlay, onImageDrag, onImageDragStart, onImageDragEnd }),
-        [onImageDrag, onImageDragEnd, onImageDragStart, overlay]
+        () => ({
+            overlay,
+            setOverlay,
+            onImageDrag,
+            onImageDragStart,
+            onImageDragEnd,
+            zoom,
+            onImageZoom,
+        }),
+        [onImageDrag, onImageDragEnd, onImageDragStart, onImageZoom, overlay, zoom]
     );
 
     return (
