@@ -4,12 +4,13 @@ import { Slider } from './components';
 import { Editor, Image, Overlay } from './Editor';
 import { Position } from './types';
 
-const placeholder = 'https://i.imgur.com/yPZNinD.jpg';
+// const placeholder = 'https://i.imgur.com/yPZNinD.jpg';
+const placeholder = 'https://i.imgur.com/nJryNjC.png';
+// const placeholder = 'https://i.imgur.com/qL7dPM7.jpg';
 
 function App() {
     const [position, setPosition] = useState<Position>({ x: null, y: null });
-    const [sliderValue, setSliderValue] = useState(50);
-    console.log(sliderValue);
+    const [sliderValue, setSliderValue] = useState(1);
 
     const [url, setUrl] = useState<string>('');
 
@@ -43,7 +44,7 @@ function App() {
                         onImageDrag={({ position }) => {
                             setPosition(position);
                         }}
-                        zoom={sliderValue / 50}
+                        zoom={sliderValue}
                     >
                         <Image src={url || placeholder} />
                         <Overlay
@@ -58,7 +59,13 @@ function App() {
                             }}
                         />
                     </Editor>
-                    <Slider value={sliderValue} onChange={val => setSliderValue(val)} />
+                    <Slider
+                        value={sliderValue}
+                        onChange={val => setSliderValue(val)}
+                        min={1}
+                        max={2}
+                        step={0.1}
+                    />
                 </VStack>
             </VStack>
         </Center>

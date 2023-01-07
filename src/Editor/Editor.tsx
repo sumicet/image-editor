@@ -67,6 +67,8 @@ export function Img({
 
     const [originalImage, setOriginalImage] = useState<Dimensions>({ width: null, height: null });
 
+    const [scale, setScale] = useState(1);
+
     /**
      * One of the rendered dimensions will be invalid because the image has
      * width: '100%' and height: '100%'
@@ -110,6 +112,43 @@ export function Img({
         image.src = src;
     }, [src]);
 
+    const calculateImageScaleBasedOnZoom = useCallback(() => {
+        if (
+            originalImage.width === null ||
+            originalImage.height === null ||
+            renderedWidth === null ||
+            renderedHeight === null ||
+            overlay.width === null ||
+            overlay.height === null ||
+            zoom === undefined
+        )
+            return null;
+
+        const isWidthTouchingContainerEdges =
+            originalImage.width / renderedWidth > originalImage.height / renderedHeight;
+
+        /**
+         * Scale between the rendered image when it's contained inside the container and the
+         * image when it fills the overlay
+         */
+        let ratio = 0;
+        if (isWidthTouchingContainerEdges) {
+            ratio = renderedHeight / overlay.height;
+        } else {
+            ratio = renderedWidth / overlay.width;
+        }
+
+        setScale(zoom / ratio);
+    }, [
+        originalImage.height,
+        originalImage.width,
+        overlay.height,
+        overlay.width,
+        renderedHeight,
+        renderedWidth,
+        zoom,
+    ]);
+
     const handleMouseMove = useCallback(
         (event: globalThis.MouseEvent) => {
             if (
@@ -127,16 +166,17 @@ export function Img({
             let actualWidth = renderedWidth;
             let actualHeight = renderedHeight;
 
-            const isHeightTouchingOverlayEdges =
-                originalImage.height - renderedHeight > originalImage.width - renderedWidth;
+            const isHeightTouchingContainerEdges =
+                originalImage.height / renderedHeight > originalImage.width / renderedWidth;
 
-            if (isHeightTouchingOverlayEdges) {
-                const scale = renderedHeight / originalImage.height;
-                actualWidth = originalImage.width * scale;
+            if (isHeightTouchingContainerEdges) {
+                const ratio = renderedHeight / originalImage.height;
+                actualWidth = originalImage.width * ratio;
             } else {
-                const scale = renderedWidth / originalImage.width;
-                actualHeight = originalImage.height * scale;
+                const ratio = renderedWidth / originalImage.width;
+                actualHeight = originalImage.height * ratio;
             }
+            console.log({ actualWidth, actualHeight });
 
             if (overlay.width === null || overlay.height === null) return;
 
@@ -209,6 +249,10 @@ export function Img({
         getOriginalImageDimensions();
     }, [getOriginalImageDimensions, src]);
 
+    useEffect(() => {
+        calculateImageScaleBasedOnZoom();
+    }, [calculateImageScaleBasedOnZoom]);
+
     return (
         <img
             // TODO forward and combine refs
@@ -224,11 +268,21 @@ export function Img({
                 minHeight: overlay.height ?? 0,
                 transform: `translateX(${position.x ?? 0}px) translateY(${
                     position.y ? -position.y : 0
-                }px) scale(${zoom ?? 1})`,
+                }px) scale(${scale})`,
             }}
             onMouseDown={startDragging}
         />
     );
+}
+
+interface Info {
+    position: Position;
+    startDraggingPosition: Position;
+    image: Dimensions & {
+        originalWidth: Dimensions['width'];
+        originalHeight: Dimensions['height'];
+    };
+    overlay: Dimensions;
 }
 
 interface SharedProps {
@@ -236,15 +290,8 @@ interface SharedProps {
      * Fires continuously while the image is being dragged.
      */
     onImageDrag?: (
-        info: {
-            position: Position;
-            startDraggingPosition: Position;
+        info: Info & {
             previousPosition: Position;
-            image: Dimensions & {
-                originalWidth: Dimensions['width'];
-                originalHeight: Dimensions['height'];
-            };
-            overlay: Dimensions;
         },
         event: globalThis.MouseEvent
     ) => void;
@@ -261,9 +308,9 @@ interface SharedProps {
      */
     onImageZoom?: (event: globalThis.MouseEvent) => void;
     /**
-     * The zoom level of the image.
+     * A number that controls the zoom level of the image.
      *
-     * @default 1
+     * @min 1
      */
     zoom?: number;
 }
@@ -277,6 +324,7 @@ const Context = createContext<
     onImageDragStart: () => null,
     onImageDragEnd: () => null,
     onImageZoom: () => null,
+    zoom: 0,
 });
 
 export type EditorProps = DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement> &
@@ -289,7 +337,7 @@ export function Editor({
     onImageDragStart,
     onImageDragEnd,
     onImageZoom,
-    zoom = 1,
+    zoom,
     ...rest
 }: EditorProps) {
     const [overlay, setOverlay] = useState<Dimensions>({ width: null, height: null });
@@ -306,6 +354,8 @@ export function Editor({
         }),
         [onImageDrag, onImageDragEnd, onImageDragStart, onImageZoom, overlay, zoom]
     );
+
+    if (zoom && zoom < 1) throw new Error('"zoom" must be greater than 1.');
 
     return (
         <Context.Provider value={memoValue}>
