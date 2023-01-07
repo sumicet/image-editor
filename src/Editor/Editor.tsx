@@ -120,7 +120,12 @@ export function Img({
                 let actualWidth = renderedWidth;
                 let actualHeight = renderedHeight;
 
-                if (renderedHeight < renderedWidth) {
+                // const isOriginalImageSmallerThanRendered =
+                //     width < renderedWidth && height < renderedHeight;
+
+                // TODO handle when it's smaller
+
+                if (height - renderedHeight > width - renderedWidth) {
                     const scale = renderedHeight / height;
                     actualWidth = width * scale;
                 } else {
@@ -143,7 +148,7 @@ export function Img({
                         // @ts-ignore
                         x: canMoveX ? -startDraggingPosition.x + event.clientX : previousPosition.x,
                         // @ts-ignore
-                        y: canMoveY ? -startDraggingPosition.y + event.clientY : previousPosition.y,
+                        y: canMoveY ? startDraggingPosition.y - event.clientY : previousPosition.y,
                     };
 
                     onImageDrag?.(
@@ -203,7 +208,9 @@ export function Img({
                 objectFit: 'contain',
                 width: '100%',
                 height: '100%',
-                transform: `translateX(${position.x ?? 0}px) translateY(${position.y ?? 0}px)`,
+                transform: `translateX(${position.x ?? 0}px) translateY(${
+                    position.y ? -position.y : 0
+                }px)`,
             }}
             onMouseDown={startDragging}
         />
