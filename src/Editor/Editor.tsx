@@ -52,7 +52,7 @@ export function Img({
 }: DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>) {
     const { overlay, onImageDrag, onImageDragStart, onImageDragEnd } = useContext(Context);
     const [isDragging, setIsDragging] = useState(false);
-    const [startDraggingPosition, setstartDraggingPosition] = useState<Position>({
+    const [startDraggingPosition, setStartDraggingPosition] = useState<Position>({
         x: null,
         y: null,
     });
@@ -78,7 +78,7 @@ export function Img({
     const startDragging = useCallback(
         (event: MouseEvent<HTMLImageElement, globalThis.MouseEvent>) => {
             setIsDragging(true);
-            setstartDraggingPosition({ x: event.clientX, y: event.clientY });
+            setStartDraggingPosition({ x: event.clientX, y: event.clientY });
 
             onMouseDown?.(event);
             onImageDragStart?.(event);
@@ -91,7 +91,7 @@ export function Img({
     const endDragging = useCallback(
         (event: globalThis.MouseEvent) => {
             setIsDragging(false);
-            setstartDraggingPosition({ x: null, y: null });
+            setStartDraggingPosition({ x: null, y: null });
 
             onImageDragEnd?.(event);
         },
@@ -119,11 +119,6 @@ export function Img({
 
                 let actualWidth = renderedWidth;
                 let actualHeight = renderedHeight;
-
-                // const isOriginalImageSmallerThanRendered =
-                //     width < renderedWidth && height < renderedHeight;
-
-                // TODO handle when it's smaller
 
                 if (height - renderedHeight > width - renderedWidth) {
                     const scale = renderedHeight / height;
@@ -197,6 +192,11 @@ export function Img({
         };
     }, [endDragging, handleMouseMove]);
 
+    useEffect(() => {
+        setStartDraggingPosition({ x: null, y: null });
+        setPosition({ x: null, y: null });
+    }, [src]);
+
     return (
         <img
             // TODO forward and combine refs
@@ -206,8 +206,10 @@ export function Img({
             style={{
                 ...style,
                 objectFit: 'contain',
-                width: '100%',
-                height: '100%',
+                maxWidth: '100%',
+                maxHeight: '100%',
+                minWidth: overlay.width || 0,
+                minHeight: overlay.height || 0,
                 transform: `translateX(${position.x ?? 0}px) translateY(${
                     position.y ? -position.y : 0
                 }px)`,
