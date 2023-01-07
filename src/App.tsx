@@ -2,10 +2,10 @@ import { Center, HStack, Input, Text, VStack } from '@chakra-ui/react';
 import { useState } from 'react';
 import { Slider } from './components';
 import { Editor, Image, Overlay } from './Editor';
-import { Position } from './types';
+import { Position } from './Editor/types';
 
-// const placeholder = 'https://i.imgur.com/yPZNinD.jpg';
-const placeholder = 'https://i.imgur.com/nJryNjC.png';
+const placeholder = 'https://i.imgur.com/yPZNinD.jpg';
+// const placeholder = 'https://i.imgur.com/nJryNjC.png';
 // const placeholder = 'https://i.imgur.com/qL7dPM7.jpg';
 
 function App() {
@@ -42,7 +42,7 @@ function App() {
                     <Editor
                         style={{ width: 700, height: 500, borderRadius: '4px' }}
                         onImageDrag={({ position }) => {
-                            setPosition(position);
+                            setPosition(position.current);
                         }}
                         zoom={sliderValue}
                     >

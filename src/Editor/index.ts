@@ -1,4 +1,5 @@
-import { Content, Editor, Overlay, Img } from './Editor';
+import { Img as Image } from './Image';
+export * from './Editor';
+export * from './Overlay';
 
-export { Content, Editor, Overlay };
-export const Image = Img;
+export { Image };
