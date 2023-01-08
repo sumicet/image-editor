@@ -1,18 +1,19 @@
-import { DetailedHTMLProps, HTMLAttributes, useContext } from 'react';
-import { useDimensions } from './hooks';
+import { DetailedHTMLProps, forwardRef, HTMLAttributes, useContext } from 'react';
+import { useDimensions, useMergeRefs } from './hooks';
 import { Context } from './Editor';
 
-export function Overlay({
-    style,
-    ...rest
-}: DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>) {
+export const Overlay = forwardRef<
+    HTMLDivElement,
+    DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>
+>(({ style, ...rest }, ref) => {
     const { setOverlay } = useContext(Context);
 
-    const { ref } = useDimensions({ onResize: setOverlay });
+    const { ref: dimensionsRef } = useDimensions({ onResize: setOverlay });
+    const mergedRef = useMergeRefs(ref, dimensionsRef);
 
     return (
         <div
-            ref={ref}
+            ref={mergedRef}
             {...rest}
             style={{
                 position: 'absolute',
@@ -25,4 +26,6 @@ export function Overlay({
             }}
         />
     );
-}
+});
+
+Overlay.displayName = 'Overlay';

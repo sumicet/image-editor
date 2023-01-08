@@ -9,7 +9,7 @@ import {
     useEffect,
     useReducer,
 } from 'react';
-import { useDimensions } from './hooks';
+import { useDimensions, useMergeRefs } from './hooks';
 import { Context } from './Editor';
 import { initialState, reducer } from './reducer';
 
@@ -29,6 +29,7 @@ export const Img = forwardRef<
      * The actual dimensions are `actualWidth` and `actualHeight`
      */
     const { ref: dimensionsRef, width: renderedWidth, height: renderedHeight } = useDimensions();
+    const mergedRef = useMergeRefs(ref, dimensionsRef);
 
     const { src } = rest;
 
@@ -69,9 +70,9 @@ export const Img = forwardRef<
         (event: globalThis.MouseEvent) => {
             if (
                 !isDragging ||
+                !src ||
                 position.start.x === null ||
                 position.start.y === null ||
-                !src ||
                 dimensions.beforeZoom.width === null ||
                 dimensions.beforeZoom.height === null
             )
@@ -182,6 +183,7 @@ export const Img = forwardRef<
             renderedHeight === null
         )
             return;
+
         let actualWidth = renderedWidth;
         let actualHeight = renderedHeight;
 
@@ -211,7 +213,7 @@ export const Img = forwardRef<
         <img
             // TODO forward and combine refs
             {...rest}
-            ref={dimensionsRef}
+            ref={mergedRef}
             draggable={false}
             style={{
                 ...style,
@@ -228,3 +230,5 @@ export const Img = forwardRef<
         />
     );
 });
+
+Img.displayName = 'Image';

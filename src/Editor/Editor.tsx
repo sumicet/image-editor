@@ -1,6 +1,7 @@
 import {
     createContext,
     DetailedHTMLProps,
+    forwardRef,
     HTMLAttributes,
     MouseEvent,
     useMemo,
@@ -51,49 +52,57 @@ export const Context = createContext<
 export type EditorProps = DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement> &
     SharedProps;
 
-export function Editor({
-    children,
-    style,
-    onImageDrag,
-    onImageDragStart,
-    onImageDragEnd,
-    onImageZoom,
-    zoom,
-    ...rest
-}: EditorProps) {
-    const [overlay, setOverlay] = useState<Dimensions>({ width: null, height: null });
-
-    const memoValue = useMemo(
-        () => ({
-            overlay,
-            setOverlay,
+export const Editor = forwardRef<HTMLDivElement, EditorProps>(
+    (
+        {
+            children,
+            style,
             onImageDrag,
             onImageDragStart,
             onImageDragEnd,
-            zoom,
             onImageZoom,
-        }),
-        [onImageDrag, onImageDragEnd, onImageDragStart, onImageZoom, overlay, zoom]
-    );
+            zoom,
+            ...rest
+        },
+        ref
+    ) => {
+        const [overlay, setOverlay] = useState<Dimensions>({ width: null, height: null });
 
-    if (zoom && zoom < 1) throw new Error('"zoom" must be greater than 1.');
+        const memoValue = useMemo(
+            () => ({
+                overlay,
+                setOverlay,
+                onImageDrag,
+                onImageDragStart,
+                onImageDragEnd,
+                zoom,
+                onImageZoom,
+            }),
+            [onImageDrag, onImageDragEnd, onImageDragStart, onImageZoom, overlay, zoom]
+        );
 
-    return (
-        <Context.Provider value={memoValue}>
-            <div
-                {...rest}
-                style={{
-                    cursor: 'grab',
-                    ...style,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}
-            >
-                {children}
-            </div>
-        </Context.Provider>
-    );
-}
+        if (zoom && zoom < 1) throw new Error('"zoom" must be greater than 1.');
+
+        return (
+            <Context.Provider value={memoValue}>
+                <div
+                    {...rest}
+                    ref={ref}
+                    style={{
+                        cursor: 'grab',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        ...style,
+                    }}
+                >
+                    {children}
+                </div>
+            </Context.Provider>
+        );
+    }
+);
+
+Editor.displayName = 'Editor';

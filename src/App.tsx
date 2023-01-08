@@ -1,5 +1,5 @@
 import { Center, HStack, Input, Text, VStack } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Slider } from './components';
 import { Editor, Image, Overlay } from './Editor';
 import { Position } from './Editor/types';
@@ -13,6 +13,8 @@ function App() {
     const [sliderValue, setSliderValue] = useState(1);
 
     const [url, setUrl] = useState<string>('');
+
+    const ref = useRef<HTMLImageElement>(null);
 
     return (
         <Center bgColor='#242424' boxSize='100%'>
@@ -46,7 +48,7 @@ function App() {
                         }}
                         zoom={sliderValue}
                     >
-                        <Image src={url || placeholder} />
+                        <Image ref={ref} src={url || placeholder} />
                         <Overlay
                             style={{
                                 width: 300,
