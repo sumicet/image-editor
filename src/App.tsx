@@ -41,7 +41,7 @@ function App() {
                 <VStack spacing={50}>
                     <Editor
                         style={{ width: 700, height: 500, borderRadius: '4px' }}
-                        onImageDrag={({ position }) => {
+                        onImageDrag={({ position, dimensions, isDragging, scale }) => {
                             setPosition(position.current);
                         }}
                         zoom={sliderValue}

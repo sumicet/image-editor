@@ -8,10 +8,6 @@ import {
 } from 'react';
 import { Dimensions, State } from './types';
 
-export function Content() {
-    return <></>;
-}
-
 interface SharedProps {
     /**
      * Fires continuously while the image is being dragged.
@@ -35,7 +31,7 @@ interface SharedProps {
     /**
      * A number that controls the zoom level of the image.
      *
-     * @min 1
+     * @min 1 Fill the overlay.
      */
     zoom?: number;
 }

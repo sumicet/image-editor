@@ -1,5 +1,7 @@
+/* eslint-disable no-const-assign */
 import {
     DetailedHTMLProps,
+    forwardRef,
     ImgHTMLAttributes,
     MouseEvent,
     useCallback,
@@ -11,14 +13,11 @@ import { useDimensions } from './hooks';
 import { Context } from './Editor';
 import { initialState, reducer } from './reducer';
 
-export function Img({
-    style,
-    onDragStart,
-    onMouseDown,
-    onMouseUp,
-    onMouseMove,
-    ...rest
-}: DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>) {
+// eslint-disable-next-line react/display-name
+export const Img = forwardRef<
+    HTMLImageElement,
+    DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>
+>(({ style, onDragStart, onMouseDown, onMouseUp, onMouseMove, ...rest }, ref) => {
     const { overlay, onImageDrag, onImageDragStart, onImageDragEnd, zoom } = useContext(Context);
     const [state, dispatch] = useReducer(reducer, initialState);
     const { isDragging, position, dimensions, scale } = state;
@@ -29,7 +28,7 @@ export function Img({
      *
      * The actual dimensions are `actualWidth` and `actualHeight`
      */
-    const { ref, width: renderedWidth, height: renderedHeight } = useDimensions();
+    const { ref: dimensionsRef, width: renderedWidth, height: renderedHeight } = useDimensions();
 
     const { src } = rest;
 
@@ -94,6 +93,9 @@ export function Img({
                 x: canMoveX ? -position.start.x + event.clientX : position.previous.x,
                 y: canMoveY ? position.start.y - event.clientY : position.previous.y,
             };
+
+            if (nextPosition.x === position.previous.x && nextPosition.y === position.previous.y)
+                return;
 
             dispatch({ type: 'updateDraggingPosition', payload: nextPosition });
 
@@ -209,7 +211,7 @@ export function Img({
         <img
             // TODO forward and combine refs
             {...rest}
-            ref={ref}
+            ref={dimensionsRef}
             draggable={false}
             style={{
                 ...style,
@@ -225,4 +227,4 @@ export function Img({
             onMouseDown={startDragging}
         />
     );
-}
+});
