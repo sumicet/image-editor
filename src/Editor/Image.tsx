@@ -8,12 +8,12 @@ import {
     useContext,
     useEffect,
     useReducer,
+    useRef,
 } from 'react';
 import { useDimensions, useMergeRefs } from './hooks';
 import { Context } from './Editor';
 import { initialState, reducer } from './reducer';
 
-// eslint-disable-next-line react/display-name
 export const Img = forwardRef<
     HTMLImageElement,
     DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>
@@ -21,6 +21,7 @@ export const Img = forwardRef<
     const { overlay, onImageDrag, onImageDragStart, onImageDragEnd, zoom } = useContext(Context);
     const [state, dispatch] = useReducer(reducer, initialState);
     const { isDragging, position, dimensions, scale } = state;
+    const isNewDragSession = useRef<boolean>(false);
 
     /**
      * One of the rendered dimensions will be invalid because the image has
@@ -35,14 +36,24 @@ export const Img = forwardRef<
 
     const startDragging = useCallback(
         (event: MouseEvent<HTMLImageElement, globalThis.MouseEvent>) => {
-            dispatch({ type: 'startDragging', payload: { x: event.clientX, y: event.clientY } });
+            dispatch({
+                type: 'startDragging',
+                payload: {
+                    x: event.clientX - (position.current.x ?? 0),
+                    y: event.clientY + (position.current.y ?? 0),
+                },
+            });
 
             onMouseDown?.(event);
+            // The state at this point isn't accurate
+            // Should call from inside the reducer or AFTER the state updates
             onImageDragStart?.(state, event);
 
             event.preventDefault();
+
+            isNewDragSession.current = true;
         },
-        [onImageDragStart, onMouseDown, state]
+        [onImageDragStart, onMouseDown, position, state]
     );
 
     const endDragging = useCallback(
@@ -91,12 +102,14 @@ export const Img = forwardRef<
             const canMoveY = !(Math.abs(nextY) > (actualHeight - overlay.height) / 2);
 
             const nextPosition = {
-                x: canMoveX ? -position.start.x + event.clientX : position.previous.x,
-                y: canMoveY ? position.start.y - event.clientY : position.previous.y,
+                x: canMoveX ? nextX : position.previous.x,
+                y: canMoveY ? -nextY : position.previous.y,
             };
 
             if (nextPosition.x === position.previous.x && nextPosition.y === position.previous.y)
                 return;
+
+            isNewDragSession.current = false;
 
             dispatch({ type: 'updateDraggingPosition', payload: nextPosition });
 
@@ -109,10 +122,7 @@ export const Img = forwardRef<
             onImageDrag,
             overlay.height,
             overlay.width,
-            position.previous.x,
-            position.previous.y,
-            position.start.x,
-            position.start.y,
+            position,
             scale,
             src,
             state,
